@@ -4,7 +4,7 @@ Small Windows tool to minimize windows on current monitor only
 ## Installation
 
 1. Make sure you have Microsoft .NET 4.0 framework installed
-2. Download the latest released version from [Releases](/releases/latest)
+2. Download the latest released version from [Releases](https://github.com/larslindnilsson/MinimizeOnCurrentMonitor/releases/latest)
 3. Unzip the downloaded zip-file, and place the MinimizeOnCurrentMonitor.exe file where you want to run it from
 
 ## Usage
