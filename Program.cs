@@ -63,7 +63,7 @@ namespace MinimizeOnCurrentMonitor
                             else
                             {
                                 Log.WriteLine("    * Minimizing");
-                                NativeMethods.ShowWindow(item.HWnd, NativeMethods.SW_MINIMIZE);
+                                NativeMethods.ShowWindowAsync(item.HWnd, NativeMethods.SW_MINIMIZE);
                             }
                         }
                         else
