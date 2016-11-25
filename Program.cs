@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using System.IO;
+using System.Runtime.InteropServices;
 
 
 namespace MinimizeOnCurrentMonitor
@@ -28,11 +29,15 @@ namespace MinimizeOnCurrentMonitor
 
             foreach (Window item in w)
             {
+                Log.WriteLine("Window:");
+                Log.WriteLine("  Title: " + item.Title);
+                Log.WriteLine("  Class: " + item.ClassName);
+                Log.WriteLine("  WindowStyle: " + item.WindowInfo.dwStyle.ToString("X8"));
+                Log.WriteLine("  ExWindowsStyle: " + item.WindowInfo.dwExStyle.ToString("X8"));
+
                 if (ShouldIgnore(item))
                 {
-                    Log.WriteLine("Ignoring");
-                    Log.WriteLine("  Title: " + item.Title);
-                    Log.WriteLine("  Class: " + item.ClassName);
+                    Log.WriteLine("    * Ignoring");
                 }
                 else
                 {
@@ -41,30 +46,34 @@ namespace MinimizeOnCurrentMonitor
                     // If it's on the same Screen as the Mouse it should be considered for minimizing.
                     if (s.DeviceName == MouseScreen.DeviceName)
                     {
-                        // Find the current state of the Window
-                        NativeMethods.WINDOWPLACEMENT placement = new NativeMethods.WINDOWPLACEMENT();
-                        NativeMethods.GetWindowPlacement(item.HWnd, ref placement);
-                        // If Window is not already minimized, then minimize it.
-                        if (placement.showCmd != NativeMethods.SW_SHOWMINIMIZED)
+                        //If window is not already minimized, then minimize it.
+                        if (item.WindowPlacement.showCmd != NativeMethods.SW_SHOWMINIMIZED)
                         {
-                            Log.WriteLine("Minimizing");
-                            Log.WriteLine("  Title: " + item.Title);
-                            Log.WriteLine("  Class: " + item.ClassName);
-                            NativeMethods.ShowWindowAsync(item.HWnd, NativeMethods.SW_SHOWMINIMIZED);
+                            
+                            if ((item.WindowInfo.dwStyle & (uint)NativeMethods.WindowStyles.WS_POPUPWINDOW) != 0 && (item.WindowInfo.dwExStyle & (uint)NativeMethods.WindowStylesEx.WS_EX_TOPMOST) != 0)
+                            {
+                                // If window is a Popup and TopMost, don't minimize it, since there is a risk that it will minimize to just a caption-bar. 
+                                Log.WriteLine("    * TopMost Popup");
+                            }
+                            else if ((item.WindowInfo.dwExStyle & (uint)(NativeMethods.WindowStylesEx.WS_EX_TOOLWINDOW | NativeMethods.WindowStylesEx.WS_EX_TOPMOST)) != 0)
+                            {
+                                // If window is a ToolWindow and TopMost, don't minimize it, since it's either a popup/toaster or a ToowWindows from another another program. 
+                                Log.WriteLine("    * TopMost ToolWindow");
+                            }
+                            else
+                            {
+                                Log.WriteLine("    * Minimizing");
+                                NativeMethods.ShowWindow(item.HWnd, NativeMethods.SW_MINIMIZE);
+                            }
                         }
                         else
                         {
-                            Log.WriteLine("Already minimized");
-                            Log.WriteLine("  Title: " + item.Title);
-                            Log.WriteLine("  Class: " + item.ClassName);
-
+                            Log.WriteLine("    * Already minimized");
                         }
                     }
                     else
                     {
-                        Log.WriteLine("Wrong Monitor");
-                        Log.WriteLine("  Title: " + item.Title);
-                        Log.WriteLine("  Class: " + item.ClassName);
+                        Log.WriteLine("    * Wrong Monitor");
                     }
                 }
 
@@ -90,15 +99,18 @@ namespace MinimizeOnCurrentMonitor
             if (String.IsNullOrEmpty(item.Title))
                 return true;
 
-            // ClassName: 
-            // Progman : The Program Manager (the Desktop)
-            // Windows.UI.Core.CoreWindow : Hidden built-in Apps, such as the calculator. 
-            if (item.ClassName == "Progman" || item.ClassName == "Windows.UI.Core.CoreWindow")
+            // ClassName = Progman : The Program Manager (the Desktop)
+            // Don't minimize this, since it will make the Desktop flicker (in best case) or crash.
+            if (item.ClassName == "Progman")
                 return true;
 
-            // HwndWrapper[Twittalert.exe ....  : Popup from Twittalert
-            if (item.ClassName.StartsWith("HwndWrapper[Twittalert.exe"))
+            // ClassName = Windows.UI.Core.CoreWindow : Hidden built-in Apps, such as the calculator. 
+            if (item.ClassName == "Windows.UI.Core.CoreWindow")
                 return true;
+
+            //// HwndWrapper[Twittalert.exe ....  : Popup from Twittalert
+            //if (item.ClassName.StartsWith("HwndWrapper[Twittalert.exe"))
+            //    return true;
 
             return false;
         }
